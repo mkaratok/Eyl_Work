@@ -24,26 +24,18 @@ class AuthService {
       // First, get the CSRF cookie
       await this.initializeCsrf();
       
-      // Use user login endpoint
-      const response = await apiClient.post('/auth/login', credentials);
+      // Use user login endpoint with correct v1 prefix
+      const response = await apiClient.post('/v1/auth/login', credentials);
       console.log('AuthService: Login successful, received data', response);
       
       // Store user data and token if they exist in the response
-      if (response && response.data && response.data.user) {
-        console.log('AuthService: Setting user data', response.data.user);
-        this.setUser(response.data.user);
-        // Store the token if it exists
-        if (response.data.token) {
-          apiClient.setAuthToken(response.data.token);
+      if (response && response.data) {
+        // Handle the response structure from AuthController
+        if (response.data.user) {
+          console.log('AuthService: Setting user data', response.data.user);
+          this.setUser(response.data.user);
         }
-      } else if (response && response.user) {
-        // Fallback for different response structure
-        console.log('AuthService: Setting user data (fallback)', response.user);
-        this.setUser(response.user);
-        // Store the token if it exists
-        if (response.token) {
-          apiClient.setAuthToken(response.token);
-        }
+        // Note: AuthController doesn't return a token for session auth
       }
       
       return response;
@@ -64,60 +56,24 @@ class AuthService {
       const response = await apiClient.post('/v1/admin/login', credentials);
       console.log('AuthService: Admin login successful, received data', response);
       
-      // Extract user data and token from various possible response structures
-      let userData = null;
-      let token = null;
-      
-      if (response && response.data && response.data.user) {
-        userData = response.data.user;
-        token = response.data.token;
-      } else if (response && response.user) {
-        userData = response.user;
-        token = response.token;
-      } else if (response && response.success && response.data) {
-        userData = response.data;
-        token = response.token;
-      }
-      
-      // Store user data if available
-      if (userData) {
-        console.log('AuthService: Setting admin user data', userData);
-        this.setUser(userData);
-      } else {
-        console.warn('AuthService: No user data found in response');
-      }
-      
-      // Store token if available
-      if (token) {
-        console.log('AuthService: Setting admin token', token.substring(0, 20) + '...');
-        apiClient.setAuthToken(token);
-      } else {
-        console.warn('AuthService: No token found in response');
+      // Extract user data and token from AdminAuthController response structure
+      if (response && response.data) {
+        if (response.data.user) {
+          console.log('AuthService: Setting admin user data', response.data.user);
+          this.setUser(response.data.user);
+        }
+        
+        // Store token if available (AdminAuthController returns a token)
+        if (response.data.token) {
+          console.log('AuthService: Setting admin token', response.data.token.substring(0, 20) + '...');
+          apiClient.setAuthToken(response.data.token);
+        }
       }
       
       return response;
     } catch (error) {
       console.error('AuthService: Admin login error', error);
-      
-      // More detailed error handling
-      if (error.message) {
-        throw new Error(error.message);
-      } else if (error.status) {
-        switch (error.status) {
-          case 401:
-            throw new Error('Invalid email or password');
-          case 403:
-            throw new Error('Account disabled or insufficient permissions');
-          case 404:
-            throw new Error('Login endpoint not found - This could indicate a routing issue or the backend server is not running');
-          case 500:
-            throw new Error('Server error occurred during login');
-          default:
-            throw new Error(`Login failed with status ${error.status}`);
-        }
-      } else {
-        throw new Error('Network error or server unavailable');
-      }
+      throw error;
     }
   }
 
@@ -126,8 +82,8 @@ class AuthService {
       // First, get the CSRF cookie
       await this.initializeCsrf();
       
-      // Use register endpoint
-      const response = await apiClient.post('/auth/register', userData);
+      // Use register endpoint with correct v1 prefix
+      const response = await apiClient.post('/v1/auth/register', userData);
       console.log('AuthService: Registration response', response);
       
       // For registration, we don't automatically log in the user
@@ -144,9 +100,16 @@ class AuthService {
       // First, get the CSRF cookie
       await this.initializeCsrf();
       
-      // Try to call admin logout endpoint
-      await apiClient.post('/admin/logout');
-      console.log('AuthService: Logout successful');
+      // Try to call general logout endpoint first
+      try {
+        await apiClient.post('/v1/auth/logout');
+        console.log('AuthService: Logout successful via general endpoint');
+      } catch (generalLogoutError) {
+        console.warn('General logout failed, trying admin logout:', generalLogoutError);
+        // Try admin logout as fallback
+        await apiClient.post('/v1/admin/logout');
+        console.log('AuthService: Logout successful via admin endpoint');
+      }
     } catch (error) {
       // Even if the logout endpoint fails, we still want to clear local data
       console.warn('Logout endpoint failed:', error);
@@ -162,16 +125,21 @@ class AuthService {
       // First, get the CSRF cookie
       await this.initializeCsrf();
       
-      // Get current user info
-      const response = await apiClient.get('/admin/me');
-      console.log('AuthService: Got current user data', response);
+      // Try to get current user info from general endpoint first
+      let response;
+      try {
+        response = await apiClient.get('/v1/auth/me');
+        console.log('AuthService: Got current user data from general endpoint', response);
+      } catch (generalMeError) {
+        console.warn('General me endpoint failed, trying admin endpoint:', generalMeError);
+        // Try admin endpoint as fallback
+        response = await apiClient.get('/v1/admin/me');
+        console.log('AuthService: Got current user data from admin endpoint', response);
+      }
       
       if (response && response.data) {
         this.setUser(response.data);
         return response.data;
-      } else if (response) {
-        this.setUser(response);
-        return response;
       }
       throw new Error('Invalid response structure');
     } catch (error) {
@@ -227,13 +195,14 @@ class AuthService {
       const token = this.getToken();
       console.log('AuthService: Checking if user is authenticated');
       
-      // We need both user data and token for proper authentication
-      if (user && token) {
-        console.log('AuthService: User data and token exist, user is authenticated');
+      // For session auth, we just need user data
+      // For token auth, we need both user data and token
+      if (user) {
+        console.log('AuthService: User data exists, user is authenticated');
         return true;
       }
       
-      console.log('AuthService: Missing user data or token, user is not authenticated');
+      console.log('AuthService: Missing user data, user is not authenticated');
       return false;
     }
     return false;

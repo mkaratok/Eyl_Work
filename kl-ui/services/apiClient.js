@@ -27,7 +27,9 @@ class ApiClient {
     try {
       console.log('ApiClient: Initializing CSRF token');
       // Use the correct URL for CSRF cookie initialization
-      const csrfUrl = this.baseURL.replace('/api', '/sanctum/csrf-cookie');
+      // The baseURL is http://localhost:8000/api, so we need to go up one level to get to /sanctum
+      const baseUrlWithoutApi = this.baseURL.replace('/api', '');
+      const csrfUrl = `${baseUrlWithoutApi}/sanctum/csrf-cookie`;
       console.log('ApiClient: CSRF URL', csrfUrl);
       const response = await fetch(csrfUrl, {
         method: 'GET',
