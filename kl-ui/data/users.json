@@ -1,0 +1,176 @@
+{
+  "users": [
+    {
+      "id": 1,
+      "name": "Super Admin",
+      "email": "superadmin@kaclira.com",
+      "phone": "+90 555 000 0001",
+      "avatar": null,
+      "is_active": true,
+      "roles": ["super_admin"],
+      "permissions": [
+        "product.create", "product.edit", "product.delete", "product.view", "product.approve", "product.manage_all",
+        "category.create", "category.edit", "category.delete", "category.view", "category.manage",
+        "user.create", "user.edit", "user.delete", "user.view", "user.manage", "user.activate", "user.deactivate",
+        "seller.create", "seller.edit", "seller.delete", "seller.view", "seller.manage", "seller.approve",
+        "price.create", "price.edit", "price.delete", "price.view", "price.manage",
+        "analytics.view", "analytics.export", "reports.view", "reports.generate",
+        "settings.view", "settings.edit", "system.manage", "notification.send", "notification.manage",
+        "own.products.manage", "own.prices.manage", "own.profile.edit", "own.analytics.view"
+      ],
+      "status": "active",
+      "created_at": "2025-09-04T16:46:11.000000Z"
+    },
+    {
+      "id": 2,
+      "name": "Admin User",
+      "email": "admin@kaclira.com",
+      "phone": "+90 555 000 0002",
+      "avatar": null,
+      "is_active": true,
+      "roles": ["admin"],
+      "permissions": [
+        "product.create", "product.edit", "product.delete", "product.view", "product.approve",
+        "category.create", "category.edit", "category.delete", "category.view",
+        "user.create", "user.edit", "user.view", "user.activate", "user.deactivate",
+        "seller.create", "seller.edit", "seller.view", "seller.approve",
+        "price.create", "price.edit", "price.view",
+        "analytics.view", "reports.view",
+        "settings.view", "notification.send",
+        "own.profile.edit"
+      ],
+      "status": "active",
+      "created_at": "2025-09-04T16:46:11.000000Z"
+    },
+    {
+      "id": 3,
+      "name": "Seller User",
+      "email": "seller@kaclira.com",
+      "phone": "+90 555 000 0003",
+      "avatar": null,
+      "is_active": true,
+      "roles": ["seller"],
+      "permissions": [
+        "product.create", "product.edit", "product.view",
+        "price.create", "price.edit", "price.view",
+        "own.products.manage", "own.prices.manage", "own.profile.edit", "own.analytics.view"
+      ],
+      "status": "active",
+      "created_at": "2025-09-04T16:46:11.000000Z"
+    },
+    {
+      "id": 4,
+      "name": "Regular User",
+      "email": "user@kaclira.com",
+      "phone": "+90 555 000 0004",
+      "avatar": null,
+      "is_active": true,
+      "roles": ["user"],
+      "permissions": [
+        "own.profile.edit"
+      ],
+      "status": "active",
+      "created_at": "2025-09-04T16:46:11.000000Z"
+    },
+    {
+      "id": 5,
+      "name": "Inactive User",
+      "email": "inactive@kaclira.com",
+      "phone": "+90 555 000 0005",
+      "avatar": null,
+      "is_active": false,
+      "roles": ["user"],
+      "permissions": [],
+      "status": "inactive",
+      "created_at": "2025-09-04T16:46:11.000000Z"
+    },
+    {
+      "id": 6,
+      "name": "Sub Seller",
+      "email": "subseller@kaclira.com",
+      "phone": "+90 555 000 0006",
+      "avatar": null,
+      "is_active": true,
+      "roles": ["sub_seller"],
+      "permissions": [
+        "product.create", "product.edit", "product.view",
+        "own.products.manage", "own.profile.edit"
+      ],
+      "status": "active",
+      "created_at": "2025-09-04T16:46:11.000000Z"
+    },
+    {
+      "id": 7,
+      "name": "Marketing Manager",
+      "email": "marketing@kaclira.com",
+      "phone": "+90 555 000 0007",
+      "avatar": null,
+      "is_active": true,
+      "roles": ["admin"],
+      "permissions": [
+        "product.view", "category.view",
+        "analytics.view", "analytics.export", "reports.view", "reports.generate",
+        "notification.send", "own.profile.edit"
+      ],
+      "status": "active",
+      "created_at": "2025-09-04T16:46:11.000000Z"
+    },
+    {
+      "id": 8,
+      "name": "Customer Support",
+      "email": "support@kaclira.com",
+      "phone": "+90 555 000 0008",
+      "avatar": null,
+      "is_active": true,
+      "roles": ["admin"],
+      "permissions": [
+        "product.view", "user.view",
+        "seller.view", "price.view",
+        "notification.send", "own.profile.edit"
+      ],
+      "status": "active",
+      "created_at": "2025-09-04T16:46:11.000000Z"
+    },
+    {
+      "id": 9,
+      "name": "Premium User",
+      "email": "premium@kaclira.com",
+      "phone": "+90 555 000 0009",
+      "avatar": null,
+      "is_active": true,
+      "roles": ["user"],
+      "permissions": [
+        "own.profile.edit"
+      ],
+      "status": "active",
+      "created_at": "2025-09-04T16:46:11.000000Z"
+    },
+    {
+      "id": 10,
+      "name": "New Seller",
+      "email": "newseller@kaclira.com",
+      "phone": "+90 555 000 0010",
+      "avatar": null,
+      "is_active": true,
+      "roles": ["seller"],
+      "permissions": [
+        "product.create", "product.edit", "product.view",
+        "price.create", "price.edit", "price.view",
+        "own.products.manage", "own.prices.manage", "own.profile.edit"
+      ],
+      "status": "active",
+      "created_at": "2025-09-04T16:46:11.000000Z"
+    }
+  ],
+  "summary": {
+    "total": 10,
+    "active": 9,
+    "by_role": {
+      "super_admin": 1,
+      "admin": 3,
+      "seller": 2,
+      "sub_seller": 1,
+      "user": 3
+    }
+  }
+}

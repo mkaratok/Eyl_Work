@@ -1,0 +1,256 @@
+import apiClient from './apiClient';
+
+class UserService {
+  constructor() {
+    this.usersData = null;
+    this.loadUsersFromJSON();
+  }
+
+  // Load users from JSON file
+  async loadUsersFromJSON() {
+    try {
+      // In a real application, you would use fetch or axios to load the JSON file
+      const response = await fetch('/data/users.json');
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+      this.usersData = await response.json();
+      console.log('Users loaded from JSON file:', this.usersData);
+    } catch (error) {
+      console.error('Failed to load users from JSON file:', error);
+      // Fallback to empty data
+      this.usersData = { users: [], summary: { total: 0, active: 0, by_role: {} } };
+    }
+  }
+
+  // Get users data, waiting for it to load if necessary
+  async getUsersData() {
+    if (!this.usersData) {
+      await this.loadUsersFromJSON();
+    }
+    return this.usersData;
+  }
+
+  // Filter and paginate users
+  filterAndPaginateUsers(users, params = {}) {
+    let filteredUsers = [...users];
+    
+    // Apply search filter
+    if (params.search) {
+      const searchTerm = params.search.toLowerCase();
+      filteredUsers = filteredUsers.filter(user => 
+        user.name.toLowerCase().includes(searchTerm) || 
+        user.email.toLowerCase().includes(searchTerm)
+      );
+    }
+    
+    // Apply role filter
+    if (params.role) {
+      filteredUsers = filteredUsers.filter(user => 
+        user.roles.includes(params.role)
+      );
+    }
+    
+    // Calculate total before pagination
+    const total = filteredUsers.length;
+    
+    // Apply pagination
+    const page = parseInt(params.page) || 1;
+    const perPage = parseInt(params.per_page) || 10;
+    const start = (page - 1) * perPage;
+    const end = start + perPage;
+    const paginatedUsers = filteredUsers.slice(start, end);
+    
+    // Create summary statistics
+    const summary = {
+      total,
+      active: filteredUsers.filter(user => user.is_active).length,
+      by_role: {
+        super_admin: filteredUsers.filter(user => user.roles.includes('super_admin')).length,
+        admin: filteredUsers.filter(user => user.roles.includes('admin')).length,
+        seller: filteredUsers.filter(user => user.roles.includes('seller')).length,
+        user: filteredUsers.filter(user => user.roles.includes('user')).length
+      }
+    };
+    
+    // Return paginated response
+    return {
+      data: paginatedUsers,
+      current_page: page,
+      per_page: perPage,
+      last_page: Math.ceil(total / perPage),
+      total,
+      from: start + 1,
+      to: Math.min(end, total),
+      summary
+    };
+  }
+
+  async getUsers(params = {}) {
+    try {
+      const userData = await this.getUsersData();
+      return this.filterAndPaginateUsers(userData.users, params);
+    } catch (error) {
+      console.error('Failed to fetch users:', error);
+      throw error;
+    }
+  }
+
+  async getUser(id) {
+    try {
+      const userData = await this.getUsersData();
+      const user = userData.users.find(u => u.id === parseInt(id));
+      if (!user) {
+        throw new Error('User not found');
+      }
+      return user;
+    } catch (error) {
+      console.error('Failed to fetch user:', error);
+      throw error;
+    }
+  }
+
+  async createUser(userData) {
+    try {
+      const allUsers = await this.getUsersData();
+      // Generate a new ID
+      const newId = Math.max(...allUsers.users.map(u => u.id)) + 1;
+      const newUser = {
+        id: newId,
+        ...userData,
+        roles: [userData.role], // Convert role to roles array
+        status: userData.is_active ? 'active' : 'inactive',
+        created_at: new Date().toISOString()
+      };
+      allUsers.users.push(newUser);
+      
+      // Update summary
+      allUsers.summary.total += 1;
+      if (userData.is_active) {
+        allUsers.summary.active += 1;
+      }
+      if (userData.role && !allUsers.summary.by_role[userData.role]) {
+        allUsers.summary.by_role[userData.role] = 0;
+      }
+      if (userData.role) {
+        allUsers.summary.by_role[userData.role] += 1;
+      }
+      
+      return { success: true, data: newUser };
+    } catch (error) {
+      console.error('Failed to create user:', error);
+      throw error;
+    }
+  }
+
+  async updateUser(id, userData) {
+    try {
+      const allUsers = await this.getUsersData();
+      const index = allUsers.users.findIndex(u => u.id === parseInt(id));
+      if (index === -1) {
+        throw new Error('User not found');
+      }
+      
+      // Update user data
+      const oldUser = allUsers.users[index];
+      allUsers.users[index] = {
+        ...oldUser,
+        ...userData,
+        roles: userData.role ? [userData.role] : oldUser.roles,
+        status: userData.is_active !== undefined ? (userData.is_active ? 'active' : 'inactive') : oldUser.status
+      };
+      
+      // Update summary if role or active status changed
+      if (userData.is_active !== undefined && userData.is_active !== oldUser.is_active) {
+        allUsers.summary.active += userData.is_active ? 1 : -1;
+      }
+      
+      if (userData.role && userData.role !== oldUser.roles[0]) {
+        // Decrement old role count
+        if (allUsers.summary.by_role[oldUser.roles[0]]) {
+          allUsers.summary.by_role[oldUser.roles[0]] -= 1;
+        }
+        // Increment new role count
+        if (!allUsers.summary.by_role[userData.role]) {
+          allUsers.summary.by_role[userData.role] = 0;
+        }
+        allUsers.summary.by_role[userData.role] += 1;
+      }
+      
+      return { success: true, data: allUsers.users[index] };
+    } catch (error) {
+      console.error('Failed to update user:', error);
+      throw error;
+    }
+  }
+
+  async deleteUser(id) {
+    try {
+      const allUsers = await this.getUsersData();
+      const index = allUsers.users.findIndex(u => u.id === parseInt(id));
+      if (index === -1) {
+        throw new Error('User not found');
+      }
+      
+      // Get user before removal for summary updates
+      const user = allUsers.users[index];
+      
+      // Remove user from array
+      allUsers.users.splice(index, 1);
+      
+      // Update summary
+      allUsers.summary.total -= 1;
+      if (user.is_active) {
+        allUsers.summary.active -= 1;
+      }
+      
+      // Update role count
+      const role = user.roles[0];
+      if (role && allUsers.summary.by_role[role]) {
+        allUsers.summary.by_role[role] -= 1;
+      }
+      
+      return { success: true, message: 'User deleted successfully' };
+    } catch (error) {
+      console.error('Failed to delete user:', error);
+      throw error;
+    }
+  }
+
+  async updateUserStatus(id, status) {
+    try {
+      const allUsers = await this.getUsersData();
+      const index = allUsers.users.findIndex(u => u.id === parseInt(id));
+      if (index === -1) {
+        throw new Error('User not found');
+      }
+      
+      // Update user status
+      const oldStatus = allUsers.users[index].status;
+      allUsers.users[index].status = status;
+      allUsers.users[index].is_active = status === 'active';
+      
+      // Update summary if active status changed
+      if ((status === 'active') !== (oldStatus === 'active')) {
+        allUsers.summary.active += status === 'active' ? 1 : -1;
+      }
+      
+      return { success: true, data: allUsers.users[index] };
+    } catch (error) {
+      console.error('Failed to update user status:', error);
+      throw error;
+    }
+  }
+
+  async searchUsers(query, params = {}) {
+    try {
+      const searchParams = { search: query, ...params };
+      return this.getUsers(searchParams);
+    } catch (error) {
+      console.error('Failed to search users:', error);
+      throw error;
+    }
+  }
+}
+
+export default new UserService();
